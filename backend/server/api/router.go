@@ -42,7 +42,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RBAC middleware for router.go
+func RBACForRouter() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole := c.GetHeader("X-User-Role")
+		if userRole == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing user role"})
+			return
+		}
+		if userRole == "viewer" && c.Request.Method != http.MethodGet {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Viewer can only access GET APIs"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func RegisterRouter(r *gin.Engine, basicRes context.BasicRes) {
+	r.Use(RBACForRouter())
 	r.GET("/pipelines", pipelines.Index)
 	r.POST("/pipelines", pipelines.Post)
 	r.GET("/pipelines/:pipelineId", pipelines.Get)
